@@ -76,13 +76,13 @@ export const intl = (function intlAutoInit() {
 
 			if (!Object.hasOwn(catalog, locale)) {
 				const content = await messageLoaders[locale]();
-				// @ts-ignore
+				// @ts-expect-error because typescript sucks
 				catalog[locale] = content.default || content;
 			}
 
 			if (shouldFallbackToDefaultMessages && !Object.hasOwn(catalog, defaultLocale)) {
 				const content2 = await messageLoaders[defaultLocale]();
-				// @ts-ignore
+				// @ts-expect-error because typescript sucks
 				catalog[defaultLocale] = content2.default || content2;
 			}
 
@@ -97,8 +97,14 @@ export const intl = (function intlAutoInit() {
 		getCurrentLocale() {
 			return currentLocale;
 		},
-		getMessage(key: string) {
-			return messages[key] || '';
+		getMessage(key: string, fallbackKey: string | undefined, fallbackMessage: string | undefined) {
+			return Object.hasOwn(messages, key)
+				? messages[key]
+				: fallbackKey
+					? Object.hasOwn(messages, fallbackKey)
+						? messages[fallbackKey]
+						: (fallbackMessage ?? '')
+					: (fallbackMessage ?? '');
 		}
 	};
 
@@ -126,9 +132,9 @@ export const intl = (function intlAutoInit() {
 
 export function _(key: string, formattingOpts: SvelteFiveIntlFormattingOpts = { values: {} }) {
 	return new IntlMessageFormat(
-		intl.getMessage(key),
+		intl.getMessage(key, formattingOpts.fallbackKey, formattingOpts.fallbackMessage),
 		intl.getCurrentLocale() || intl.getDefaultLocale()
-	).format(formattingOpts.values) as string;
+	).format(formattingOpts.values ?? {}) as string;
 }
 
 export function extractLocaleFromUrl(url: string) {
@@ -150,4 +156,6 @@ export type SvelteFiveIntlMessages = Record<string, Record<string, string>>;
 
 export interface SvelteFiveIntlFormattingOpts {
 	values: Record<string, string>;
+	fallbackKey?: string;
+	fallbackMessage?: string;
 }
